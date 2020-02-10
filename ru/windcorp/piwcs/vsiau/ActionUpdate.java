@@ -141,10 +141,11 @@ public class ActionUpdate extends Action {
 		}
 		
 		private final List<CommandInvocation> instructions = new ArrayList<>();
-		private final String expectedVersion;
+		private String expectedVersion;
+		private String newVersion;
 		
 		public Program(Reader source) throws IOException {
-			expectedVersion = readHeader(source);
+			readHeader(source);
 			
 			StringBuilder commandName = new StringBuilder();
 			StringBuilder[] args = new StringBuilder[
@@ -180,7 +181,7 @@ public class ActionUpdate extends Action {
 					break;
 					
 				case '\n':
-					instructions.add(compile(commandName, args, element + 1));
+					compile(commandName, args, element + 1);
 					commandName.setLength(0);
 					element = -1;
 					break;
@@ -197,12 +198,12 @@ public class ActionUpdate extends Action {
 				
 			}
 			
-			instructions.add(compile(commandName, args, element + 1));
+			compile(commandName, args, element + 1);
 		}
 		
 		private static final char SYNTAX_VERSION = '0';
 		
-		private static String readHeader(Reader source) throws IOException {
+		private void readHeader(Reader source) throws IOException {
 			int syntaxVersion = source.read();
 			if (syntaxVersion != SYNTAX_VERSION) {
 				throw new IOException("This updater cannot apply the update because the updater is outdated. "
@@ -224,10 +225,26 @@ public class ActionUpdate extends Action {
 				}
 			}
 			
-			return sb.toString();
+			expectedVersion = sb.toString();
+			
+			sb.setLength(0);
+			while (true) {
+				int c = source.read();
+				if (c == '\n') {
+					break;
+				} else {
+					sb.append((char) c);
+				}
+			}
+			
+			newVersion = sb.toString();
 		}
 
-		private static CommandInvocation compile(StringBuilder commandName, StringBuilder[] args, int argCount) throws IOException {
+		private void compile(StringBuilder commandName, StringBuilder[] args, int argCount) throws IOException {
+			if (commandName.length() == 0) {
+				return;
+			}
+			
 			Command command = COMMANDS.get(commandName.toString());
 			
 			if (command == null) {
@@ -241,7 +258,7 @@ public class ActionUpdate extends Action {
 			String[] strArgs = new String[argCount];
 			for (int i = 0; i < strArgs.length; ++i) strArgs[i] = args[i].toString();
 			
-			return new CommandInvocation(command, strArgs);
+			instructions.add(new CommandInvocation(command, strArgs));
 		}
 
 		public void run(ZipFile zip) throws IOException {
@@ -251,8 +268,16 @@ public class ActionUpdate extends Action {
 			}
 		}
 		
+		public List<CommandInvocation> getInstructions() {
+			return instructions;
+		}
+		
 		public String getExpectedVersion() {
 			return expectedVersion;
+		}
+		
+		public String getNewVersion() {
+			return newVersion;
 		}
 	}
 	
@@ -266,10 +291,10 @@ public class ActionUpdate extends Action {
 		
 		try (ZipFile zip = unpackZipFile(zipFile)) {
 			Program program = readProgram(zip);
-			checkDirectories(program.getExpectedVersion());
+			checkDirectories(program.getExpectedVersion(), program.getNewVersion());
 			program.run(zip);
 
-			updateMarker(program.getExpectedVersion());
+			updateMarker(program.getNewVersion());
 		}
 	}
 
@@ -286,6 +311,7 @@ public class ActionUpdate extends Action {
 	}
 
 	private static Program readProgram(ZipFile zip) throws IOException {
+		System.out.println("Parsing update instructions...");
 		ZipEntry entry = zip.getEntry("program");
 		
 		if (entry == null) {
@@ -296,11 +322,19 @@ public class ActionUpdate extends Action {
 				InputStream inputStream = zip.getInputStream(entry);
 				Reader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 		) {
-			return new Program(reader);
+			Program program = new Program(reader);
+			
+			System.out.println(
+					"This patch updates version " + program.getExpectedVersion() + 
+					" to version " + program.getNewVersion() + 
+					" using " + program.getInstructions().size() + " instructions"
+			);
+			
+			return program;
 		}
 	}
 
-	private static void checkDirectories(String expected) throws IOException {
+	private static void checkDirectories(String expected, String newest) throws IOException {
 		System.out.println("Checking installation directory...");
 		
 		Path markerPath = Paths.get("mods", "1.7.10");
@@ -327,6 +361,9 @@ public class ActionUpdate extends Action {
 			System.out.println("Found modpack version marker " + marker);
 		
 		if (!marker.equals(expected)) {
+			if (marker.equals(newest)) {
+				throw new IOException("Installation is up-to-date");
+			}
 			throw new IOException("Expected version " + expected + " but found version " + marker + ". Please reinstall from scratch.");
 		}
 	}

@@ -45,25 +45,25 @@ public class Main {
 			System.out.println("Done");
 		} catch (IOException e) {
 			e.printStackTrace();
-			System.out.print("An unrecoverable error has occurred, terminating");
+			System.out.println("An unrecoverable error has occurred, terminating");
 			System.in.read();
 		}
 	}
 	
 	private static void printUsage() {
 		printHeader();
-		System.out.print("Operates in working directory");
+		System.out.println("Operates in working directory");
 		System.out.print("Usage: ");
 		
-		boolean first = false;
+		boolean first = true;
 		for (Action a : ACTIONS) {
-			System.out.print("\"" + a.getName() + "\"");
-			
 			if (first) {
 				first = false;
 			} else {
 				System.out.print(" or ");
 			}
+			
+			System.out.print("\"" + a.getName() + "\"");
 		}
 		
 		System.out.println();
