@@ -35,7 +35,7 @@ public class ActionUpdate extends Action {
 				@Override
 				public void run(String[] args, ZipFile zip) throws IOException {
 					ZipEntry source = zip.getEntry(args[0]);
-					Path dest = Paths.get(args[1]);
+					Path dest = getPath(args[1]);
 					
 					if (source == null)
 						throw new IOException("Malformed update program: \"" + source + "\" not found in ZIP file");
@@ -56,19 +56,20 @@ public class ActionUpdate extends Action {
 			
 			private static class Delete extends Command {
 				public Delete() {
-					super("Delete", 1, "Deleting %2$s");
+					super("Delete", 1, "Deleting %1$s");
 				}
 				
 				@Override
 				public void run(String[] args, ZipFile zip) throws IOException {
 					for (
-							Path path = Paths.get(args[1]);
+							Path path = getPath(args[0]);
 							path.getNameCount() != 0;
 							path = path.subpath(0, path.getNameCount() - 1)
 					) {
 						
 						if (Files.notExists(path)) {
-							continue;
+							System.out.println("  not deleting: " + path + " does not exist");
+							break;
 						} else if (Files.isRegularFile(path)) {
 							// Go forth; delete silently
 						} else if (Files.isDirectory(path)) {
@@ -115,6 +116,17 @@ public class ActionUpdate extends Action {
 			
 			public void register() {
 				COMMANDS.put(name, this);
+			}
+			
+			protected static Path getPath(String str) throws IOException {
+				Path path = Paths.get(str);
+				
+				if (path.normalize().startsWith("..")) {
+					throw new IOException("Path \"" + str + "\" is not within the working directory. "
+							+ "Aborting as a security measure");
+				}
+				
+				return path;
 			}
 		}
 		
@@ -175,7 +187,8 @@ public class ActionUpdate extends Action {
 					
 					args[element].setLength(0);
 					if (source.read() != ' ') {
-						throw new IOException("Malformed update program: unexpected char or EOF after a semicolon, expected ' '");
+						throw new IOException("Malformed update program: "
+								+ "unexpected char or EOF after a semicolon, expected ' '");
 					}
 					
 					break;
@@ -212,7 +225,8 @@ public class ActionUpdate extends Action {
 			}
 			
 			if (source.read() != '\n') {
-				throw new IOException("Malformed update program: unexpected char or EOF after syntax version, expected '\\n'");
+				throw new IOException("Malformed update program: "
+						+ "unexpected char or EOF after syntax version, expected '\\n'");
 			}
 			
 			StringBuilder sb = new StringBuilder();
@@ -252,7 +266,9 @@ public class ActionUpdate extends Action {
 			}
 			
 			if (argCount != command.getArgCount()) {
-				throw new IOException("Malformed update program: command " + commandName + " requires " + command.getArgCount() + " arguments but " + argCount + " provided");
+				throw new IOException("Malformed update program: command " + commandName
+						+ " requires " + command.getArgCount()
+						+ " arguments but " + argCount + " provided");
 			}
 			
 			String[] strArgs = new String[argCount];
@@ -364,14 +380,19 @@ public class ActionUpdate extends Action {
 			if (marker.equals(newest)) {
 				throw new IOException("Installation is up-to-date");
 			}
-			throw new IOException("Expected version " + expected + " but found version " + marker + ". Please reinstall from scratch.");
+			throw new IOException("Expected version " + expected
+					+ " but found version " + marker
+					+ ". Please reinstall from scratch.");
 		}
 	}
 	
 	private static  void updateMarker(String version) throws IOException {
 		Files.write(
 				Paths.get("mods", "1.7.10", "PIWCS " + version + ".txt"),
-				("Модпак PIWCS. Обновлено автоматически при помощи " + Main.NAME + " " + Main.VERSION + ".").getBytes(StandardCharsets.UTF_8)
+				(
+						"Модпак PIWCS. Обновлено автоматически при помощи " +
+						Main.NAME + " " + Main.VERSION + "."
+				).getBytes(StandardCharsets.UTF_8)
 		);
 	}
 

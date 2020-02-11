@@ -87,8 +87,10 @@ public class Main {
 		System.out.println("PIWCS Modpack Very Simple Installer and Updater version " + VERSION);
 		System.out.println();
 		System.out.println("Copyright 2020 Javapony (kvadropups@gmail.com)");
-		System.out.println(NAME + " is licensed under GNU GPL v3-or-later. This is free software, and you are welcome to redistribute it");
+		System.out.println(NAME + " is licensed under GNU GPL v3-or-later.");
+		System.out.println("This is free software, and you are welcome to redistribute it.");
 		System.out.println("This program comes with ABSOLUTELY NO WARRANTY. For details please refer to the license.");
+		System.out.println("In particular, this program make NO attempt to check the integrity or authenticity of downloaded executable files.");
 		System.out.println();
 	}
 
