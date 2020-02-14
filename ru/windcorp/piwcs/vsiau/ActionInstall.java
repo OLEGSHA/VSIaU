@@ -87,7 +87,9 @@ public class ActionInstall extends Action {
 		System.out.println("Unpacking " + e.getName());
 		
 		Path path = Paths.get(e.getName());
-		path = path.subpath(1, path.getNameCount());
+		
+		if (path.getNameCount() > 1 && path.getName(0).toString().startsWith("PIWCS"))
+			path = path.subpath(1, path.getNameCount());
 		
 		if (path.getNameCount() > 1)
 			Files.createDirectories(path.subpath(0, path.getNameCount() - 1));
