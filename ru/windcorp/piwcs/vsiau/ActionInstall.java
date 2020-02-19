@@ -21,13 +21,13 @@ public class ActionInstall extends Action {
 	}
 
 	@Override
-	public void run() throws IOException {
+	public void run() throws IOException, AbortException {
 		checkDirectories();
 		Path zipFile = downloadZipFile();
 		unpackZipFile(zipFile);
 	}
 
-	private static void checkDirectories() throws IOException {
+	private static void checkDirectories() throws IOException, AbortException {
 		System.out.println("Checking installation directory...");
 		
 		checkDirectory(getConfigPath());
@@ -35,7 +35,7 @@ public class ActionInstall extends Action {
 		checkDirectory(getModsVersionPath());
 	}
 	
-	private static void checkDirectory(Path dir) throws IOException {
+	private static void checkDirectory(Path dir) throws IOException, AbortException {
 		if (Files.notExists(dir)) {
 			System.out.println(dir + " does not exist, creating one");
 			Files.createDirectory(dir);
@@ -45,7 +45,7 @@ public class ActionInstall extends Action {
 					.findAny()
 					.isPresent()
 			) {
-				throw new IOException(dir + " is not empty. Please clear it manually");
+				throw new AbortException(dir + " is not empty. Please clear it manually");
 			}
 		}
 	}

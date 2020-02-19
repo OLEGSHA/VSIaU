@@ -1,6 +1,5 @@
 package ru.windcorp.piwcs.vsiau;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,7 +7,7 @@ public class Main {
 	
 	public static final String NAME = "PIWCS Modpack VSIaU";
 	public static final String SHORT_NAME = "PIWCS_VSIaU";
-	public static final String VERSION = "1.1";
+	public static final String VERSION = "1.2";
 	
 	private static final List<Action> ACTIONS = new ArrayList<>();
 	
@@ -43,7 +42,13 @@ public class Main {
 			action.run();
 			System.out.println();
 			System.out.println("Done");
-		} catch (IOException e) {
+		} catch (AbortException e) {
+			System.out.println("=====");
+			System.out.println(e.getMessage());
+			System.out.println("=====");
+			System.out.println("Cannot proceed, terminating");
+			System.in.read();
+		} catch (Exception e) {
 			e.printStackTrace();
 			System.out.println("An unrecoverable error has occurred, terminating");
 			System.in.read();

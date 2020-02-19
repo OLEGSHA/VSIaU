@@ -33,12 +33,12 @@ public class ActionUpdate extends Action {
 				}
 				
 				@Override
-				public void run(String[] args, ZipFile zip) throws IOException {
+				public void run(String[] args, ZipFile zip) throws IOException, AbortException {
 					ZipEntry source = zip.getEntry(args[0]);
 					Path dest = getPath(args[1]);
 					
 					if (source == null)
-						throw new IOException("Malformed update program: \"" + source + "\" not found in ZIP file");
+						throw new AbortException("Malformed update program: \"" + source + "\" not found in ZIP file");
 					
 					if (dest.getNameCount() > 1)
 						Files.createDirectories(dest.subpath(0, dest.getNameCount() - 1));
@@ -60,7 +60,7 @@ public class ActionUpdate extends Action {
 				}
 				
 				@Override
-				public void run(String[] args, ZipFile zip) throws IOException {
+				public void run(String[] args, ZipFile zip) throws IOException, AbortException {
 					for (
 							Path path = getPath(args[0]);
 							path.getNameCount() != 0;
@@ -99,7 +99,7 @@ public class ActionUpdate extends Action {
 				this.description = description;
 			}
 			
-			public abstract void run(String[] args, ZipFile zip) throws IOException;
+			public abstract void run(String[] args, ZipFile zip) throws IOException, AbortException;
 			
 			@SuppressWarnings("unused")
 			public String getName() {
@@ -118,11 +118,11 @@ public class ActionUpdate extends Action {
 				COMMANDS.put(name, this);
 			}
 			
-			protected static Path getPath(String str) throws IOException {
+			protected static Path getPath(String str) throws IOException, AbortException {
 				Path path = Paths.get(str);
 				
 				if (path.normalize().startsWith("..")) {
-					throw new IOException("Path \"" + str + "\" is not within the working directory. "
+					throw new AbortException("Path \"" + str + "\" is not within the working directory. "
 							+ "Aborting as a security measure");
 				}
 				
@@ -139,7 +139,7 @@ public class ActionUpdate extends Action {
 				this.args = args;
 			}
 
-			public void run(ZipFile zip) throws IOException {
+			public void run(ZipFile zip) throws IOException, AbortException {
 				System.out.println(command.getDescription(args));
 				command.run(args, zip);
 			}
@@ -156,7 +156,7 @@ public class ActionUpdate extends Action {
 		private String expectedVersion;
 		private String newVersion;
 		
-		public Program(Reader source) throws IOException {
+		public Program(Reader source) throws IOException, AbortException {
 			readHeader(source);
 			
 			StringBuilder commandName = new StringBuilder();
@@ -182,12 +182,12 @@ public class ActionUpdate extends Action {
 					element++;
 					
 					if (element >= args.length) {
-						throw new IOException("Malformed update program: excessive arguments");
+						throw new AbortException("Malformed update program: excessive arguments");
 					}
 					
 					args[element].setLength(0);
 					if (source.read() != ' ') {
-						throw new IOException("Malformed update program: "
+						throw new AbortException("Malformed update program: "
 								+ "unexpected char or EOF after a semicolon, expected ' '");
 					}
 					
@@ -216,16 +216,16 @@ public class ActionUpdate extends Action {
 		
 		private static final char SYNTAX_VERSION = '0';
 		
-		private void readHeader(Reader source) throws IOException {
+		private void readHeader(Reader source) throws IOException, AbortException {
 			int syntaxVersion = source.read();
 			if (syntaxVersion != SYNTAX_VERSION) {
-				throw new IOException("This updater cannot apply the update because the updater is outdated. "
+				throw new AbortException("This updater cannot apply the update because the updater is outdated. "
 						+ "Reinstall from scratch or get the newest updater. "
 						+ "Required syntax version: " + ((char) syntaxVersion));
 			}
 			
 			if (source.read() != '\n') {
-				throw new IOException("Malformed update program: "
+				throw new AbortException("Malformed update program: "
 						+ "unexpected char or EOF after syntax version, expected '\\n'");
 			}
 			
@@ -254,7 +254,7 @@ public class ActionUpdate extends Action {
 			newVersion = sb.toString();
 		}
 
-		private void compile(StringBuilder commandName, StringBuilder[] args, int argCount) throws IOException {
+		private void compile(StringBuilder commandName, StringBuilder[] args, int argCount) throws IOException, AbortException {
 			if (commandName.length() == 0) {
 				return;
 			}
@@ -262,11 +262,11 @@ public class ActionUpdate extends Action {
 			Command command = COMMANDS.get(commandName.toString());
 			
 			if (command == null) {
-				throw new IOException("Malformed update program: unknown command \"" + commandName + "\"");
+				throw new AbortException("Malformed update program: unknown command \"" + commandName + "\"");
 			}
 			
 			if (argCount != command.getArgCount()) {
-				throw new IOException("Malformed update program: command " + commandName
+				throw new AbortException("Malformed update program: command " + commandName
 						+ " requires " + command.getArgCount()
 						+ " arguments but " + argCount + " provided");
 			}
@@ -277,7 +277,7 @@ public class ActionUpdate extends Action {
 			instructions.add(new CommandInvocation(command, strArgs));
 		}
 
-		public void run(ZipFile zip) throws IOException {
+		public void run(ZipFile zip) throws IOException, AbortException {
 			System.out.println("Applying update...");
 			for (CommandInvocation inv : instructions) {
 				inv.run(zip);
@@ -302,7 +302,7 @@ public class ActionUpdate extends Action {
 	}
 
 	@Override
-	public void run() throws IOException {
+	public void run() throws IOException, AbortException {
 		Path zipFile = downloadZipFile();
 		
 		try (ZipFile zip = unpackZipFile(zipFile)) {
@@ -326,12 +326,12 @@ public class ActionUpdate extends Action {
 		return zip;
 	}
 
-	private static Program readProgram(ZipFile zip) throws IOException {
+	private static Program readProgram(ZipFile zip) throws IOException, AbortException {
 		System.out.println("Parsing update instructions...");
 		ZipEntry entry = zip.getEntry("program");
 		
 		if (entry == null) {
-			throw new IOException("Malformed update package: update program not found");
+			throw new AbortException("Malformed update package: update program not found");
 		}
 		
 		try (
@@ -350,10 +350,14 @@ public class ActionUpdate extends Action {
 		}
 	}
 
-	private static void checkDirectories(String expected, String newest) throws IOException {
+	private static void checkDirectories(String expected, String newest) throws IOException, AbortException {
 		System.out.println("Checking installation directory...");
 		
 		Path markerPath = Paths.get("mods", "1.7.10");
+		
+		if (!Files.isDirectory(markerPath)) {
+			throw new AbortException("PIWCS modpack not installed: directory \"" + markerPath + "\" not found");
+		}
 		
 		Pattern regex = Pattern.compile("PIWCS \\d+\\.\\d+\\.\\d+\\.txt");
 		
@@ -365,7 +369,7 @@ public class ActionUpdate extends Action {
 			.collect(Collectors.toCollection(ArrayList::new));
 		
 		if (markers.isEmpty()) {
-			throw new IOException("PIWCS modpack not installed: file \"PIWCS <version>.txt\" not found");
+			throw new AbortException("PIWCS modpack not installed: file \"PIWCS <version>.txt\" not found");
 		}
 		
 		markers.sort(Comparator.reverseOrder());
@@ -378,9 +382,9 @@ public class ActionUpdate extends Action {
 		
 		if (!marker.equals(expected)) {
 			if (marker.equals(newest)) {
-				throw new IOException("Installation is up-to-date");
+				throw new AbortException("Installation is up-to-date");
 			}
-			throw new IOException("Expected version " + expected
+			throw new AbortException("Expected version " + expected
 					+ " but found version " + marker
 					+ ". Please reinstall from scratch.");
 		}

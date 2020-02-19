@@ -18,7 +18,7 @@ public abstract class Action {
 		this.name = name;
 	}
 	
-	public abstract void run() throws Exception;
+	public abstract void run() throws IOException, AbortException;
 	
 	public String getName() {
 		return name;
