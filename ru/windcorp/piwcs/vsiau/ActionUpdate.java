@@ -364,15 +364,17 @@ public class ActionUpdate extends Action {
 		
 		Pattern regex = Pattern.compile("PIWCS \\d+\\.\\d+\\.\\d+\\.txt");
 		
-		List<String> markers = Files.list(markerPath)
-			.map(Path::getFileName)
-			.map(Path::toString)
-			.filter(regex.asPredicate())
-			.map(s -> s.substring("PIWCS ".length(), s.length() - ".txt".length()))
-			.collect(Collectors.toCollection(ArrayList::new));
+		List<String> markers;
+		try (Stream<Path> paths = Files.list(markerPath)) {
+			markers = paths.map(Path::getFileName)
+				.map(Path::toString)
+				.filter(regex.asPredicate())
+				.map(s -> s.substring("PIWCS ".length(), s.length() - ".txt".length()))
+				.collect(Collectors.toCollection(ArrayList::new));
+		}
 		
 		if (markers.isEmpty()) {
-			throw new AbortException("PIWCS modpack not installed: file \"PIWCS <version>.txt\" not found");
+			throw new AbortException("PIWCS modpack not installed: file \"PIWCS " + expected + ".txt\" not found");
 		}
 		
 		markers.sort(Comparator.reverseOrder());

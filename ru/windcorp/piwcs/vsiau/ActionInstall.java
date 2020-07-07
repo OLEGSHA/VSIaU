@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -40,12 +41,14 @@ public class ActionInstall extends Action {
 			System.out.println(dir + " does not exist, creating one");
 			Files.createDirectory(dir);
 		} else {
-			if (Files.list(dir)
-					.filter(((Predicate<Path>) Files::isDirectory).negate())
-					.findAny()
-					.isPresent()
-			) {
-				throw new AbortException(dir + " is not empty. Please clear it manually");
+			try (Stream<Path> paths = Files.list(dir)) {
+				if (paths
+						.filter(((Predicate<Path>) Files::isDirectory).negate())
+						.findAny()
+						.isPresent()
+				) {
+					throw new AbortException(dir + " is not empty. Please clear it manually");
+				}
 			}
 		}
 	}
