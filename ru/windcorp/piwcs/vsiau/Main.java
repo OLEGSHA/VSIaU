@@ -7,7 +7,7 @@ public class Main {
 	
 	public static final String NAME = "PIWCS Modpack VSIaU";
 	public static final String SHORT_NAME = "PIWCS_VSIaU";
-	public static final String VERSION = "1.2";
+	public static final String VERSION = "1.3";
 	
 	private static final List<Action> ACTIONS = new ArrayList<>();
 	

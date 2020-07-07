@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -73,10 +74,12 @@ public class ActionUpdate extends Action {
 						} else if (Files.isRegularFile(path)) {
 							// Go forth; delete silently
 						} else if (Files.isDirectory(path)) {
-							if (Files.list(path).findAny().isPresent()) {
-								break;
-							} else {
-								System.out.println("  also deleting empty directory " + path);
+							try (Stream<Path> paths = Files.list(path)) {
+								if (paths.findAny().isPresent()) {
+									break;
+								} else {
+									System.out.println("  also deleting empty directory " + path);
+								}
 							}
 						} else {
 							System.out.println("  not deleting: " + path + " does not denote a file or a directory");
